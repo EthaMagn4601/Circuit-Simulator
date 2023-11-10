@@ -3,10 +3,18 @@ import sympy as sp
 
 comp_names, comp_nd1, comp_nd2, comp_values = [], [], [], []
 solved_voltages = []
+file_name = 'Circuit_Simulator_Current_Supply'
+np.set_printoptions(suppress=True)
+
+# IMPORTANT STIPULATION FOR MAKING THE NETLIST: MAKE SURE THAT THE GROUND NODE IS ZERO PLEASE, THINGS ARE MORE PRONE
+# TO BREAKING IF YOU DO NOT MAKE SURE THAT NODE ZERO IS THE GROUND NODE
+
+# ALSO PLEASE MAKE SURE THAT THE NODES ARE IN ASCENDING ORDER, I.E. IF THE HIGHEST NODE VALUE IS 4 AND THE LOWEST IS
+# 0, MAKE SURE THERE ARE AT LEAST 4 COMPONENTS THAT CONNECT TO NODE 1, 2, 3, and 4 THAT COMPLETE A LOOP TO NODE ZERO.
 
 # Function that reads the number of lines within the netlist for list size in other functions
 def netlist_numlines():
-    f = open('Circuit_Simulator')
+    f = open(file_name)
     lines = f.readlines()
     total_lines = len(lines)
     f.close()
@@ -59,7 +67,10 @@ def simultaneous_equations_setup():
             temp_var = comp_nd2[i]
             comp_nd2[i] = comp_nd1[i]
             comp_nd1[i] = temp_var
+    currentsupp_case_statement = 0
+    voltsupp_case_statement = 0
     for i in range(0, 1000):
+        print(i)
         if 'V'+str(i) in comp_names:
             nd = comp_names.index('V'+str(i))
             voltsupp_nodes = [comp_nd1[nd], comp_nd2[nd]]
@@ -67,32 +78,76 @@ def simultaneous_equations_setup():
             voltsupp_active_node = max(voltsupp_nodes)
             comp_names.pop(nd), comp_nd2.pop(nd), comp_nd1.pop(nd), comp_values.pop(nd)
             solved_voltages.append(int(voltsupp_voltage))
-    equation_matrix = np.zeros([max_value - min_value - 1, max_value - min_value])
-    for i in range(0, np.size(comp_names)):
-        if comp_nd1[i] == str(min_value):
-            equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
-                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
-                1 / int(comp_values[i])
-        elif comp_nd1[i] == str(voltsupp_active_node):
-            equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
-                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
-                1 / int(comp_values[i])
-            equation_matrix[int(comp_nd2[i]) - min_value - 2][len(equation_matrix)] = \
-                equation_matrix[int(comp_nd2[i]) - min_value - 2][len(equation_matrix)] + \
-                1 * int(voltsupp_voltage) / int(comp_values[i])
-        else:
-            equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
-                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
-                1 / int(comp_values[i])
-            equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 2] = \
-                equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 2] + \
-                1 / int(comp_values[i])
-            equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 3] = \
-                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 3] - \
-                1 / int(comp_values[i])
-            equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 1] = \
-                equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 1] - \
-                1 / int(comp_values[i])
+            voltsupp_case_statement = 1
+            break
+        elif 'I'+str(i) in comp_names:
+            nd = comp_names.index('I' + str(i))
+            currentsupp_nodes = [comp_nd1[nd], comp_nd2[nd]]
+            currentsupp_current = int(comp_values[nd])
+            currentsupp_active_node = max(currentsupp_nodes)
+            comp_names.pop(nd), comp_nd2.pop(nd), comp_nd1.pop(nd), comp_values.pop(nd)
+            # solved_currents.append(int(currentsupp_current))
+            currentsupp_case_statement = 1
+            break
+    if voltsupp_case_statement == 1:
+        equation_matrix = np.zeros([max_value - min_value - 1, max_value - min_value])
+        print(equation_matrix)
+        for i in range(0, np.size(comp_names)):
+            if comp_nd1[i] == str(min_value):
+                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
+                    1 / int(comp_values[i])
+            elif comp_nd1[i] == str(voltsupp_active_node):
+                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
+                    1 / int(comp_values[i])
+                equation_matrix[int(comp_nd2[i]) - min_value - 2][len(equation_matrix)] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 2][len(equation_matrix)] + \
+                    1 * int(voltsupp_voltage) / int(comp_values[i])
+            else:
+                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
+                    1 / int(comp_values[i])
+                equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 2] = \
+                    equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 2] + \
+                    1 / int(comp_values[i])
+                equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 3] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 3] - \
+                    1 / int(comp_values[i])
+                equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 1] = \
+                    equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 1] - \
+                    1 / int(comp_values[i])
+    elif currentsupp_case_statement == 1:
+        equation_matrix = np.zeros([max_value - min_value, max_value - min_value + 1])
+        for i in range(0, np.size(comp_names)):
+            if comp_nd1[i] == str(min_value):
+                equation_matrix[int(comp_nd2[i]) - min_value - 1][int(comp_nd2[i]) - min_value - 1] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 1][int(comp_nd2[i]) - min_value - 1] + \
+                    1 / int(comp_values[i])
+            elif comp_nd1[i] == str(currentsupp_active_node):
+                equation_matrix[int(comp_nd2[i]) - min_value - 1][int(comp_nd2[i]) - min_value - 1] = \
+                    equation_matrix[int(comp_nd2[i]) - min_value - 1][int(comp_nd2[i]) - min_value - 1] + \
+                    1 / int(comp_values[i])
+                print(int(comp_nd2[i]) - min_value - 2)
+                print(equation_matrix[int(comp_nd2[i]) - min_value - 2][len(equation_matrix)])
+                if (int(comp_nd2[i]) - min_value - 2) == min_value and
+                    equation_matrix[int(comp_nd2[i]) - min_value - 2][len(equation_matrix)] = \
+                    -1 * currentsupp_current
+            # else:
+            #     # equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] = \
+            #     #     equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 2] + \
+            #     #     1 / int(comp_values[i])
+            #     # equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 2] = \
+            #     #     equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 2] + \
+            #     #     1 / int(comp_values[i])
+            #     # equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 3] = \
+            #     #     equation_matrix[int(comp_nd2[i]) - min_value - 2][int(comp_nd2[i]) - min_value - 3] - \
+            #     #     1 / int(comp_values[i])
+            #     # equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 1] = \
+            #     #     equation_matrix[int(comp_nd1[i]) - min_value - 2][int(comp_nd1[i]) - min_value - 1] - \
+            #     #     1 / int(comp_values[i])
+        print(equation_matrix)
+        return print('This has a current supply')
     if len(equation_matrix) == 1:
         m = sp.Matrix(equation_matrix).rref()[0]
         solved_voltages.append(m)
@@ -115,11 +170,11 @@ def netlistdata_writing():
         min_value = int(min(comp_nd2))
     else:
         min_value = int(min(comp_nd1))
-    f = open('Circuit_Simulator', 'r')
+    f = open(file_name, 'r')
     lines = f.readlines()
     total_lines = len(lines)
     f.close()
-    f = open('Circuit_Simulator', 'w')
+    f = open(file_name, 'w')
     case_statement = 0
     for i in range(0, total_lines):
         if lines[i] == '==============================================\n':
@@ -129,11 +184,11 @@ def netlistdata_writing():
             case_statement = 1
             break
     if case_statement == 0:
-        for i in range(0, total_lines):
-            f.write(lines[i])
+        for i_ in range(0, total_lines):
+            f.write(lines[i_])
         f.write('\n')
     f.close()
-    f = open('Circuit_Simulator','a')
+    f = open(file_name,'a')
     branch_lines = '=============================================='+ '\n' + '               branch quantities' +\
         '\n' + '=============================================='
     f.write(branch_lines)
@@ -166,6 +221,11 @@ def netlistdata_writing():
                 '----------------------------------------------')
 def main():
     netlist_reading()
-    netlistdata_writing()
+    # The below function should only be called when testing for the actual function, it serves no purpose when
+    # called here and breaks things otherwise
+
+    simultaneous_equations_setup()
+
+    # netlistdata_writing()
     print(comp_names, comp_nd1, comp_nd2, comp_values)
 main()
